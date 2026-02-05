@@ -231,12 +231,26 @@ export default function App() {
                 <input inputMode="numeric" value={form.spo2} onChange={(e) => setForm((f) => ({ ...f, spo2: e.target.value }))} placeholder="(blank ok)" />
               </label>
               <label>
-                BP Sys
-                <input inputMode="numeric" value={form.bpSys} onChange={(e) => setForm((f) => ({ ...f, bpSys: e.target.value }))} placeholder="(blank ok)" />
-              </label>
-              <label>
-                BP Dia
-                <input inputMode="numeric" value={form.bpDia} onChange={(e) => setForm((f) => ({ ...f, bpDia: e.target.value }))} placeholder="(blank ok)" />
+                BP
+                <div className="bpRow">
+                  <input
+                    className="bpInput"
+                    inputMode="numeric"
+                    value={form.bpSys}
+                    onChange={(e) => setForm((f) => ({ ...f, bpSys: e.target.value }))}
+                    placeholder="Sys"
+                    aria-label="Blood pressure systolic"
+                  />
+                  <div className="bpSlash">/</div>
+                  <input
+                    className="bpInput"
+                    inputMode="numeric"
+                    value={form.bpDia}
+                    onChange={(e) => setForm((f) => ({ ...f, bpDia: e.target.value }))}
+                    placeholder="Dia"
+                    aria-label="Blood pressure diastolic"
+                  />
+                </div>
               </label>
               <label>
                 Temp (F)
