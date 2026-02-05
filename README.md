@@ -1,4 +1,4 @@
-# Firefighter Vitals – Current Scene (v1)
+# Vital Call – Firefighter Vitals (Current Scene) (v1)
 
 A simple offline-first web app to track vitals for firefighters during an active incident.
 
