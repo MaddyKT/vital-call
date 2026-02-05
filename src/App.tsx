@@ -265,15 +265,15 @@ export default function App() {
                   <div className="formGrid">
                     <label>
                       HR
-                      <input inputMode="numeric" value={form.hr} onChange={(e) => setForm((f) => ({ ...f, hr: e.target.value }))} placeholder="(blank ok)" />
+                      <input inputMode="numeric" value={form.hr} onChange={(e) => setForm((f) => ({ ...f, hr: e.target.value }))} placeholder="" />
                     </label>
                     <label>
                       RR
-                      <input inputMode="numeric" value={form.rr} onChange={(e) => setForm((f) => ({ ...f, rr: e.target.value }))} placeholder="(blank ok)" />
+                      <input inputMode="numeric" value={form.rr} onChange={(e) => setForm((f) => ({ ...f, rr: e.target.value }))} placeholder="" />
                     </label>
                     <label>
                       SpO₂
-                      <input inputMode="numeric" value={form.spo2} onChange={(e) => setForm((f) => ({ ...f, spo2: e.target.value }))} placeholder="(blank ok)" />
+                      <input inputMode="numeric" value={form.spo2} onChange={(e) => setForm((f) => ({ ...f, spo2: e.target.value }))} placeholder="" />
                     </label>
                     <label>
                       BP
@@ -299,7 +299,7 @@ export default function App() {
                     </label>
                     <label>
                       Temp (F)
-                      <input inputMode="decimal" value={form.tempF} onChange={(e) => setForm((f) => ({ ...f, tempF: e.target.value }))} placeholder="(blank ok)" />
+                      <input inputMode="decimal" value={form.tempF} onChange={(e) => setForm((f) => ({ ...f, tempF: e.target.value }))} placeholder="" />
                     </label>
                   </div>
 
