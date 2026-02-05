@@ -164,6 +164,25 @@ textarea { resize: vertical; }
   gap: 8px;
 }
 
+.vitalBtn {
+  text-align: left;
+  border: 1px solid #eef0f7;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.vitalBtn:hover {
+  border-color: #dbe3ff;
+}
+
+.chart {
+  border: 1px solid #eef0f7;
+  border-radius: 12px;
+}
+
 .cardTitle { font-weight: 900; font-size: 12px; opacity: 0.85; }
 
 .cardGrid {

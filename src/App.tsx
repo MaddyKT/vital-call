@@ -22,6 +22,66 @@ function minutesAgo(ts: number) {
 
 type AlertKey = 'hr' | 'rr' | 'spo2' | 'bp' | 'temp'
 
+type TrendMetric = 'hr' | 'rr' | 'spo2' | 'temp' | 'bp'
+
+function pointsForMetric(entries: VitalsEntry[], metric: TrendMetric) {
+  const asc = entries.slice().sort((a, b) => a.timestamp - b.timestamp)
+
+  if (metric === 'bp') {
+    const sys = asc.filter((v) => typeof v.bpSys === 'number').map((v) => ({ x: v.timestamp, y: v.bpSys as number }))
+    const dia = asc.filter((v) => typeof v.bpDia === 'number').map((v) => ({ x: v.timestamp, y: v.bpDia as number }))
+    return { sys, dia }
+  }
+
+  const key: Record<Exclude<TrendMetric, 'bp'>, keyof VitalsEntry> = {
+    hr: 'hr',
+    rr: 'rr',
+    spo2: 'spo2',
+    temp: 'tempF',
+  }
+
+  const k = key[metric as Exclude<TrendMetric, 'bp'>]
+  const pts = asc
+    .filter((v) => typeof (v as any)[k] === 'number')
+    .map((v) => ({ x: v.timestamp, y: (v as any)[k] as number }))
+
+  return { pts }
+}
+
+function SparkLine({ data, width = 640, height = 220 }: { data: { x: number; y: number }[]; width?: number; height?: number }) {
+  if (!data.length) return <div className="empty">No data for this vital yet.</div>
+
+  const minX = Math.min(...data.map((p) => p.x))
+  const maxX = Math.max(...data.map((p) => p.x))
+  const minY = Math.min(...data.map((p) => p.y))
+  const maxY = Math.max(...data.map((p) => p.y))
+
+  const pad = 18
+  const w = width
+  const h = height
+
+  const sx = (x: number) => {
+    if (maxX === minX) return pad
+    return pad + ((x - minX) / (maxX - minX)) * (w - pad * 2)
+  }
+  const sy = (y: number) => {
+    if (maxY === minY) return h / 2
+    return h - pad - ((y - minY) / (maxY - minY)) * (h - pad * 2)
+  }
+
+  const d = data.map((p, i) => `${i === 0 ? 'M' : 'L'} ${sx(p.x).toFixed(1)} ${sy(p.y).toFixed(1)}`).join(' ')
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={height} className="chart">
+      <rect x={0} y={0} width={w} height={h} fill="#ffffff" />
+      <path d={d} fill="none" stroke="#1d4ed8" strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
+      {/* y-axis labels */}
+      <text x={pad} y={pad} fontSize={12} fill="#334155">{maxY.toFixed(0)}</text>
+      <text x={pad} y={h - 6} fontSize={12} fill="#334155">{minY.toFixed(0)}</text>
+    </svg>
+  )
+}
+
 function getAlerts(v: VitalsEntry): Set<AlertKey> {
   const a = new Set<AlertKey>()
 
@@ -67,6 +127,7 @@ export default function App() {
 
   const [form, setForm] = useState({ hr: '', rr: '', spo2: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
   const [showNewVitals, setShowNewVitals] = useState(false)
+  const [trend, setTrend] = useState<null | { metric: 'hr' | 'rr' | 'spo2' | 'temp' | 'bp' }>(null)
 
   useEffect(() => {
     // reset form when switching firefighters
@@ -276,13 +337,24 @@ export default function App() {
                 return (
                   <div className="card" style={{ margin: 0 }}>
                     <div className="cardGrid">
-                      <div>HR: <b>{v.hr ?? '—'}</b> {flag('hr')}</div>
-                      <div>RR: <b>{v.rr ?? '—'}</b> {flag('rr')}</div>
-                      <div>SpO₂: <b>{v.spo2 ?? '—'}</b> {flag('spo2')}</div>
-                      <div>BP: <b>{v.bpSys ?? '—'}</b> / <b>{v.bpDia ?? '—'}</b> {flag('bp')}</div>
-                      <div>TempF: <b>{v.tempF ?? '—'}</b> {flag('temp')}</div>
+                      <button className="vitalBtn" onClick={() => setTrend({ metric: 'hr' })}>
+                        HR: <b>{v.hr ?? '—'}</b> {flag('hr')}
+                      </button>
+                      <button className="vitalBtn" onClick={() => setTrend({ metric: 'rr' })}>
+                        RR: <b>{v.rr ?? '—'}</b> {flag('rr')}
+                      </button>
+                      <button className="vitalBtn" onClick={() => setTrend({ metric: 'spo2' })}>
+                        SpO₂: <b>{v.spo2 ?? '—'}</b> {flag('spo2')}
+                      </button>
+                      <button className="vitalBtn" onClick={() => setTrend({ metric: 'bp' })}>
+                        BP: <b>{v.bpSys ?? '—'}</b> / <b>{v.bpDia ?? '—'}</b> {flag('bp')}
+                      </button>
+                      <button className="vitalBtn" onClick={() => setTrend({ metric: 'temp' })}>
+                        TempF: <b>{v.tempF ?? '—'}</b> {flag('temp')}
+                      </button>
                     </div>
                     {v.notes ? <div className="notes">{v.notes}</div> : null}
+                    <div className="fine" style={{ marginTop: 6 }}>Tap a vital to see trend</div>
                   </div>
                 )
               })() : null}
@@ -431,6 +503,46 @@ export default function App() {
               <div className="formActions">
                 <button className="btn" onClick={saveFirefighter}>Save</button>
               </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {trend && selected ? (
+        <div className="modalOverlay" onClick={() => setTrend(null)} role="presentation">
+          <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <div className="modalHeader">
+              <div>
+                <div className="panelTitle">Trend: {trend.metric.toUpperCase()}</div>
+                <div className="panelSub">{`${selected.lastName}, ${selected.firstName}`.replace(/^,\s*/, '').trim()}{selected.unit ? ` (${selected.unit})` : ''}</div>
+              </div>
+              <button className="btn secondary" onClick={() => setTrend(null)}>Close</button>
+            </div>
+
+            <div style={{ padding: 14, display: 'grid', gap: 10 }}>
+              {trend.metric === 'bp' ? (() => {
+                const { sys, dia } = pointsForMetric(selectedVitals, 'bp') as any
+                const maxLen = Math.max(sys.length, dia.length)
+                if (maxLen === 0) return <div className="empty">No data for BP yet.</div>
+                return (
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    <div>
+                      <div className="fine" style={{ marginBottom: 6 }}><b>Sys</b></div>
+                      <SparkLine data={sys} />
+                    </div>
+                    <div>
+                      <div className="fine" style={{ marginBottom: 6 }}><b>Dia</b></div>
+                      <SparkLine data={dia} />
+                    </div>
+                  </div>
+                )
+              })() : (() => {
+                const metric = trend.metric as Exclude<TrendMetric, 'bp'>
+                const pts = (pointsForMetric(selectedVitals, metric) as any).pts as { x: number; y: number }[]
+                return <SparkLine data={pts} />
+              })()}
+
+              <div className="fine">Shows recorded values over time (missing values are skipped).</div>
             </div>
           </div>
         </div>
