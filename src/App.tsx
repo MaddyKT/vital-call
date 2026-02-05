@@ -125,15 +125,27 @@ export default function App() {
       .sort((a, b) => b.timestamp - a.timestamp)
   }, [state.vitals, selected])
 
-  const [form, setForm] = useState({ hr: '', rr: '', spo2: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
+  const [form, setForm] = useState({ timeLocal: '', hr: '', rr: '', spo2: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
   const [showNewVitals, setShowNewVitals] = useState(false)
   const [trend, setTrend] = useState<null | { metric: 'hr' | 'rr' | 'spo2' | 'temp' | 'bp' }>(null)
 
+  function nowLocalValue() {
+    const d = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+
   useEffect(() => {
     // reset form when switching firefighters
-    setForm({ hr: '', rr: '', spo2: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
+    setForm({ timeLocal: nowLocalValue(), hr: '', rr: '', spo2: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
     setShowNewVitals(false)
   }, [state.selectedFirefighterId])
+
+  useEffect(() => {
+    if (showNewVitals) {
+      setForm((f) => ({ ...f, timeLocal: nowLocalValue() }))
+    }
+  }, [showNewVitals])
 
   const [ffModal, setFfModal] = useState<null | { mode: 'add' | 'edit'; id?: string }>(null)
   const [ffForm, setFfForm] = useState({ firstName: '', lastName: '', unit: '' })
@@ -199,10 +211,12 @@ export default function App() {
       return
     }
 
+    const ts = form.timeLocal ? new Date(form.timeLocal).getTime() : Date.now()
+
     const entry: VitalsEntry = {
       id: nanoid(),
       firefighterId: selected.id,
-      timestamp: Date.now(),
+      timestamp: Number.isFinite(ts) ? ts : Date.now(),
       hr: clampNum(form.hr),
       rr: clampNum(form.rr),
       spo2: clampNum(form.spo2),
@@ -213,7 +227,7 @@ export default function App() {
     }
 
     setState((s) => ({ ...s, vitals: [...s.vitals, entry] }))
-    setForm({ hr: '', rr: '', spo2: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
+    setForm({ timeLocal: nowLocalValue(), hr: '', rr: '', spo2: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
     setShowNewVitals(false)
   }
 
@@ -370,6 +384,18 @@ export default function App() {
                     <div className="panelSub">{`${`${selected.lastName}, ${selected.firstName}`.replace(/^,\s*/, '').trim()}`}{selected.unit ? ` (${selected.unit})` : ''}</div>
                   </div>
                   <button className="btn secondary" onClick={() => setShowNewVitals(false)}>Close</button>
+                </div>
+
+                <div className="timeHeader">
+                  <label className="timeLabel">
+                    Time
+                    <input
+                      className="timeInput"
+                      type="datetime-local"
+                      value={form.timeLocal}
+                      onChange={(e) => setForm((f) => ({ ...f, timeLocal: e.target.value }))}
+                    />
+                  </label>
                 </div>
 
                 <div className="form" style={{ paddingTop: 0 }}>

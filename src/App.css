@@ -231,3 +231,22 @@ textarea { resize: vertical; }
   justify-content: space-between;
   gap: 10px;
 }
+
+.timeHeader {
+  padding: 10px 14px;
+  border-bottom: 1px solid #eef0f7;
+  display: flex;
+  justify-content: center;
+}
+
+.timeLabel {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.timeInput {
+  width: 260px;
+}
