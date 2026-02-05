@@ -86,7 +86,7 @@ function getAlerts(v: VitalsEntry): Set<AlertKey> {
   const a = new Set<AlertKey>()
 
   // Simple v1 thresholds (tweakable). Use only if value present.
-  if (typeof v.hr === 'number' && (v.hr >= 160 || v.hr <= 45)) a.add('hr')
+  if (typeof v.hr === 'number' && (v.hr > 100 || v.hr < 50)) a.add('hr')
   if (typeof v.rr === 'number' && (v.rr >= 30 || v.rr <= 8)) a.add('rr')
   if (typeof v.spo2 === 'number' && v.spo2 < 92) a.add('spo2')
   if (typeof v.tempF === 'number' && v.tempF >= 101.0) a.add('temp')
