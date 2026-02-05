@@ -47,6 +47,10 @@ export default function App() {
     saveState(state)
   }, [state])
 
+  const sortedFirefighters = useMemo(() => {
+    return state.firefighters.slice().sort((a, b) => a.name.localeCompare(b.name))
+  }, [state.firefighters])
+
   const selected = useMemo(() => {
     return state.firefighters.find((f) => f.id === state.selectedFirefighterId) ?? null
   }, [state.firefighters, state.selectedFirefighterId])
@@ -174,11 +178,11 @@ export default function App() {
             <button className="btn small" onClick={addFirefighter}>+ Add</button>
           </div>
 
-          {state.firefighters.length === 0 ? (
+          {sortedFirefighters.length === 0 ? (
             <div className="empty">No firefighters yet. Tap “Add”.</div>
           ) : (
             <div className="list">
-              {state.firefighters.map((f) => {
+              {sortedFirefighters.map((f) => {
                 const last = state.vitals
                   .filter((v) => v.firefighterId === f.id)
                   .slice()
