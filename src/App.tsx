@@ -64,10 +64,12 @@ export default function App() {
   }, [state.vitals, selected])
 
   const [form, setForm] = useState({ hr: '', rr: '', spo2: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
+  const [showNewVitals, setShowNewVitals] = useState(false)
 
   useEffect(() => {
     // reset form when switching firefighters
     setForm({ hr: '', rr: '', spo2: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
+    setShowNewVitals(false)
   }, [state.selectedFirefighterId])
 
   const addFirefighter = () => {
@@ -115,6 +117,7 @@ export default function App() {
 
     setState((s) => ({ ...s, vitals: [...s.vitals, entry] }))
     setForm({ hr: '', rr: '', spo2: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
+    setShowNewVitals(false)
   }
 
   const exportAll = async () => {
@@ -212,61 +215,106 @@ export default function App() {
 
         <main className="panel">
           <div className="panelHeader">
-            <div className="panelTitle">Vitals Entry</div>
+            <div className="panelTitle">Vitals</div>
             <div className="panelSub">{selected ? `${selected.name}${selected.unit ? ` (${selected.unit})` : ''}` : 'Select a firefighter'}</div>
           </div>
 
-          <div className="form">
-            <div className="formGrid">
-              <label>
-                HR
-                <input inputMode="numeric" value={form.hr} onChange={(e) => setForm((f) => ({ ...f, hr: e.target.value }))} placeholder="(blank ok)" />
-              </label>
-              <label>
-                RR
-                <input inputMode="numeric" value={form.rr} onChange={(e) => setForm((f) => ({ ...f, rr: e.target.value }))} placeholder="(blank ok)" />
-              </label>
-              <label>
-                SpO₂
-                <input inputMode="numeric" value={form.spo2} onChange={(e) => setForm((f) => ({ ...f, spo2: e.target.value }))} placeholder="(blank ok)" />
-              </label>
-              <label>
-                BP
-                <div className="bpRow">
-                  <input
-                    className="bpInput"
-                    inputMode="numeric"
-                    value={form.bpSys}
-                    onChange={(e) => setForm((f) => ({ ...f, bpSys: e.target.value }))}
-                    placeholder="Sys"
-                    aria-label="Blood pressure systolic"
-                  />
-                  <div className="bpSlash">/</div>
-                  <input
-                    className="bpInput"
-                    inputMode="numeric"
-                    value={form.bpDia}
-                    onChange={(e) => setForm((f) => ({ ...f, bpDia: e.target.value }))}
-                    placeholder="Dia"
-                    aria-label="Blood pressure diastolic"
-                  />
+          {!selected ? (
+            <div className="empty">Select a firefighter to view vitals.</div>
+          ) : (
+            <div style={{ padding: 14, display: 'grid', gap: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div className="panelSub">
+                  {selectedVitals[0] ? `Last recorded: ${new Date(selectedVitals[0].timestamp).toLocaleString()}` : 'No vitals recorded yet.'}
                 </div>
-              </label>
-              <label>
-                Temp (F)
-                <input inputMode="decimal" value={form.tempF} onChange={(e) => setForm((f) => ({ ...f, tempF: e.target.value }))} placeholder="(blank ok)" />
-              </label>
-            </div>
+                <button className="btn" onClick={() => setShowNewVitals(true)}>+ New vitals</button>
+              </div>
 
-            <label>
-              Notes
-              <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Optional" rows={3} />
-            </label>
-
-            <div className="formActions">
-              <button className="btn" onClick={submitVitals} disabled={!selected}>Save Vitals</button>
+              {selectedVitals[0] ? (() => {
+                const v = selectedVitals[0]
+                const alerts = getAlerts(v)
+                const flag = (k: AlertKey) => (alerts.has(k) ? <span className="alert">❗️</span> : null)
+                return (
+                  <div className="card" style={{ margin: 0 }}>
+                    <div className="cardGrid">
+                      <div>HR: <b>{v.hr ?? '—'}</b> {flag('hr')}</div>
+                      <div>RR: <b>{v.rr ?? '—'}</b> {flag('rr')}</div>
+                      <div>SpO₂: <b>{v.spo2 ?? '—'}</b> {flag('spo2')}</div>
+                      <div>BP: <b>{v.bpSys ?? '—'}</b> / <b>{v.bpDia ?? '—'}</b> {flag('bp')}</div>
+                      <div>TempF: <b>{v.tempF ?? '—'}</b> {flag('temp')}</div>
+                    </div>
+                    {v.notes ? <div className="notes">{v.notes}</div> : null}
+                  </div>
+                )
+              })() : null}
             </div>
-          </div>
+          )}
+
+          {showNewVitals && selected ? (
+            <div className="modalOverlay" onClick={() => setShowNewVitals(false)} role="presentation">
+              <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+                <div className="modalHeader">
+                  <div>
+                    <div className="panelTitle">New vitals</div>
+                    <div className="panelSub">{selected.name}{selected.unit ? ` (${selected.unit})` : ''}</div>
+                  </div>
+                  <button className="btn secondary" onClick={() => setShowNewVitals(false)}>Close</button>
+                </div>
+
+                <div className="form" style={{ paddingTop: 0 }}>
+                  <div className="formGrid">
+                    <label>
+                      HR
+                      <input inputMode="numeric" value={form.hr} onChange={(e) => setForm((f) => ({ ...f, hr: e.target.value }))} placeholder="(blank ok)" />
+                    </label>
+                    <label>
+                      RR
+                      <input inputMode="numeric" value={form.rr} onChange={(e) => setForm((f) => ({ ...f, rr: e.target.value }))} placeholder="(blank ok)" />
+                    </label>
+                    <label>
+                      SpO₂
+                      <input inputMode="numeric" value={form.spo2} onChange={(e) => setForm((f) => ({ ...f, spo2: e.target.value }))} placeholder="(blank ok)" />
+                    </label>
+                    <label>
+                      BP
+                      <div className="bpRow">
+                        <input
+                          className="bpInput"
+                          inputMode="numeric"
+                          value={form.bpSys}
+                          onChange={(e) => setForm((f) => ({ ...f, bpSys: e.target.value }))}
+                          placeholder="Sys"
+                          aria-label="Blood pressure systolic"
+                        />
+                        <div className="bpSlash">/</div>
+                        <input
+                          className="bpInput"
+                          inputMode="numeric"
+                          value={form.bpDia}
+                          onChange={(e) => setForm((f) => ({ ...f, bpDia: e.target.value }))}
+                          placeholder="Dia"
+                          aria-label="Blood pressure diastolic"
+                        />
+                      </div>
+                    </label>
+                    <label>
+                      Temp (F)
+                      <input inputMode="decimal" value={form.tempF} onChange={(e) => setForm((f) => ({ ...f, tempF: e.target.value }))} placeholder="(blank ok)" />
+                    </label>
+                  </div>
+
+                  <label>
+                    Notes
+                    <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Optional" rows={3} />
+                  </label>
+
+                  <div className="formActions">
+                    <button className="btn" onClick={submitVitals}>Save vitals</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <div className="divider" />
 
