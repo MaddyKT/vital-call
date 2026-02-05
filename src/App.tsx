@@ -20,6 +20,26 @@ function minutesAgo(ts: number) {
   return `${mins} min ago`
 }
 
+type AlertKey = 'hr' | 'rr' | 'spo2' | 'bp' | 'temp'
+
+function getAlerts(v: VitalsEntry): Set<AlertKey> {
+  const a = new Set<AlertKey>()
+
+  // Simple v1 thresholds (tweakable). Use only if value present.
+  if (typeof v.hr === 'number' && (v.hr >= 160 || v.hr <= 45)) a.add('hr')
+  if (typeof v.rr === 'number' && (v.rr >= 30 || v.rr <= 8)) a.add('rr')
+  if (typeof v.spo2 === 'number' && v.spo2 < 92) a.add('spo2')
+  if (typeof v.tempF === 'number' && v.tempF >= 101.0) a.add('temp')
+  if (
+    (typeof v.bpSys === 'number' && (v.bpSys >= 180 || v.bpSys <= 90)) ||
+    (typeof v.bpDia === 'number' && (v.bpDia >= 110 || v.bpDia <= 60))
+  ) {
+    a.add('bp')
+  }
+
+  return a
+}
+
 export default function App() {
   const [state, setState] = useState<AppState>(() => loadState())
 
@@ -243,19 +263,29 @@ export default function App() {
             <div className="empty">No vitals recorded yet.</div>
           ) : (
             <div className="history">
-              {selectedVitals.map((v) => (
-                <div key={v.id} className="card">
-                  <div className="cardTitle">{new Date(v.timestamp).toLocaleString()}</div>
-                  <div className="cardGrid">
-                    <div>HR: <b>{v.hr ?? '—'}</b></div>
-                    <div>RR: <b>{v.rr ?? '—'}</b></div>
-                    <div>SpO₂: <b>{v.spo2 ?? '—'}</b></div>
-                    <div>BP: <b>{v.bpSys ?? '—'}</b> / <b>{v.bpDia ?? '—'}</b></div>
-                    <div>TempF: <b>{v.tempF ?? '—'}</b></div>
+              {selectedVitals.map((v) => {
+                const alerts = getAlerts(v)
+                const flag = (k: AlertKey) => (alerts.has(k) ? <span className="alert">❗️</span> : null)
+
+                return (
+                  <div key={v.id} className="card">
+                    <div className="cardTitle">{new Date(v.timestamp).toLocaleString()}</div>
+                    <div className="cardGrid">
+                      <div>HR: <b>{v.hr ?? '—'}</b> {flag('hr')}</div>
+                      <div>RR: <b>{v.rr ?? '—'}</b> {flag('rr')}</div>
+                      <div>SpO₂: <b>{v.spo2 ?? '—'}</b> {flag('spo2')}</div>
+                      <div>BP: <b>{v.bpSys ?? '—'}</b> / <b>{v.bpDia ?? '—'}</b> {flag('bp')}</div>
+                      <div>TempF: <b>{v.tempF ?? '—'}</b> {flag('temp')}</div>
+                    </div>
+                    {alerts.size ? (
+                      <div className="fine" style={{ color: '#b91c1c', opacity: 0.9 }}>
+                        Threshold alert(s) on this entry.
+                      </div>
+                    ) : null}
+                    {v.notes ? <div className="notes">{v.notes}</div> : null}
                   </div>
-                  {v.notes ? <div className="notes">{v.notes}</div> : null}
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </main>

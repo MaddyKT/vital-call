@@ -159,5 +159,11 @@ textarea { resize: vertical; }
 
 .notes { font-size: 13px; color: #334155; }
 
+.alert {
+  color: #b91c1c;
+  font-weight: 900;
+  margin-left: 6px;
+}
+
 .footer { padding: 10px 14px; }
 .fine { font-size: 12px; opacity: 0.7; }
