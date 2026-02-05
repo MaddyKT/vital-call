@@ -10,7 +10,19 @@ export function loadState(): AppState {
     if (!parsed || !Array.isArray(parsed.firefighters) || !Array.isArray(parsed.vitals)) {
       return { firefighters: [], selectedFirefighterId: null, vitals: [] }
     }
-    return parsed
+
+    // migration: older versions stored { name, unit }
+    const migrated = (parsed.firefighters as any[]).map((f) => {
+      if ('firstName' in (f as any) && 'lastName' in (f as any)) return f
+      const name = String((f as any).name ?? '').trim()
+      const unit = (f as any).unit
+      const parts = name.split(/\s+/).filter(Boolean)
+      const firstName = parts[0] ?? ''
+      const lastName = parts.slice(1).join(' ')
+      return { id: (f as any).id, firstName, lastName, unit }
+    })
+
+    return { ...parsed, firefighters: migrated as any }
   } catch {
     return { firefighters: [], selectedFirefighterId: null, vitals: [] }
   }

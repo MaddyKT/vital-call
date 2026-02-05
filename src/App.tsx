@@ -48,7 +48,9 @@ export default function App() {
   }, [state])
 
   const sortedFirefighters = useMemo(() => {
-    return state.firefighters.slice().sort((a, b) => a.name.localeCompare(b.name))
+    return state.firefighters
+      .slice()
+      .sort((a, b) => (`${a.lastName} ${a.firstName}`.trim()).localeCompare(`${b.lastName} ${b.firstName}`.trim()))
   }, [state.firefighters])
 
   const selected = useMemo(() => {
@@ -72,22 +74,56 @@ export default function App() {
     setShowNewVitals(false)
   }, [state.selectedFirefighterId])
 
-  const addFirefighter = () => {
-    const name = prompt('Firefighter name?')?.trim()
-    if (!name) return
-    const unit = prompt('Unit/company? (optional)')?.trim() ?? ''
-    const ff: Firefighter = { id: nanoid(), name, unit: unit || undefined }
+  const [ffModal, setFfModal] = useState<null | { mode: 'add' | 'edit'; id?: string }>(null)
+  const [ffForm, setFfForm] = useState({ firstName: '', lastName: '', unit: '' })
+
+  const openAddFirefighter = () => {
+    setFfForm({ firstName: '', lastName: '', unit: '' })
+    setFfModal({ mode: 'add' })
+  }
+
+  const openEditFirefighter = (ff: Firefighter) => {
+    setFfForm({ firstName: ff.firstName ?? '', lastName: ff.lastName ?? '', unit: ff.unit ?? '' })
+    setFfModal({ mode: 'edit', id: ff.id })
+  }
+
+  const saveFirefighter = () => {
+    const firstName = ffForm.firstName.trim()
+    const lastName = ffForm.lastName.trim()
+    const unit = ffForm.unit.trim()
+
+    if (!firstName && !lastName) {
+      alert('Enter at least a first name or last name.')
+      return
+    }
+
+    if (!ffModal) return
+
+    if (ffModal.mode === 'add') {
+      const ff: Firefighter = { id: nanoid(), firstName, lastName, unit: unit || undefined }
+      setState((s) => ({
+        ...s,
+        firefighters: [...s.firefighters, ff],
+        selectedFirefighterId: ff.id,
+      }))
+      setFfModal(null)
+      return
+    }
+
+    const id = ffModal.id
+    if (!id) return
     setState((s) => ({
       ...s,
-      firefighters: [...s.firefighters, ff].sort((a, b) => a.name.localeCompare(b.name)),
-      selectedFirefighterId: ff.id,
+      firefighters: s.firefighters.map((f) => (f.id === id ? { ...f, firstName, lastName, unit: unit || undefined } : f)),
     }))
+    setFfModal(null)
   }
 
   const removeFirefighter = (id: string) => {
     const ff = state.firefighters.find((f) => f.id === id)
     if (!ff) return
-    if (!confirm(`Remove ${ff.name} and all their vitals?`)) return
+    const label = `${ff.lastName}, ${ff.firstName}`.replace(/^,\s*/, '').trim()
+    if (!confirm(`Remove ${label} and all their vitals?`)) return
     setState((s) => {
       const remaining = s.firefighters.filter((f) => f.id !== id)
       const vitals = s.vitals.filter((v) => v.firefighterId !== id)
@@ -178,7 +214,7 @@ export default function App() {
         <aside className="panel">
           <div className="panelHeader">
             <div className="panelTitle">On Scene</div>
-            <button className="btn small" onClick={addFirefighter}>+ Add</button>
+            <button className="btn small" onClick={openAddFirefighter}>+ Add</button>
           </div>
 
           {sortedFirefighters.length === 0 ? (
@@ -201,11 +237,14 @@ export default function App() {
                     tabIndex={0}
                   >
                     <div className="rowMain">
-                      <div className="rowName">{f.name}</div>
+                      <div className="rowName">{`${f.lastName}, ${f.firstName}`.replace(/^,\s*/, '').trim()}</div>
                       <div className="rowMeta">{f.unit ?? ''}</div>
                       <div className="rowMeta">{last ? `Last: ${minutesAgo(last.timestamp)}` : 'No vitals yet'}</div>
                     </div>
-                    <button className="iconBtn" onClick={(e) => { e.stopPropagation(); removeFirefighter(f.id) }} title="Remove">×</button>
+                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                      <button className="iconBtn" onClick={(e) => { e.stopPropagation(); openEditFirefighter(f) }} title="Edit">✎</button>
+                      <button className="iconBtn" onClick={(e) => { e.stopPropagation(); removeFirefighter(f.id) }} title="Remove">×</button>
+                    </div>
                   </div>
                 )
               })}
@@ -216,7 +255,7 @@ export default function App() {
         <main className="panel">
           <div className="panelHeader">
             <div className="panelTitle">Vitals</div>
-            <div className="panelSub">{selected ? `${selected.name}${selected.unit ? ` (${selected.unit})` : ''}` : 'Select a firefighter'}</div>
+            <div className="panelSub">{selected ? `${`${selected.lastName}, ${selected.firstName}`.replace(/^,\s*/, '').trim()}${selected.unit ? ` (${selected.unit})` : ''}` : 'Select a firefighter'}</div>
           </div>
 
           {!selected ? (
@@ -256,7 +295,7 @@ export default function App() {
                 <div className="modalHeader">
                   <div>
                     <div className="panelTitle">New vitals</div>
-                    <div className="panelSub">{selected.name}{selected.unit ? ` (${selected.unit})` : ''}</div>
+                    <div className="panelSub">{`${`${selected.lastName}, ${selected.firstName}`.replace(/^,\s*/, '').trim()}`}{selected.unit ? ` (${selected.unit})` : ''}</div>
                   </div>
                   <button className="btn secondary" onClick={() => setShowNewVitals(false)}>Close</button>
                 </div>
@@ -360,6 +399,42 @@ export default function App() {
       <footer className="footer">
         <div className="fine">Note: “Mailto” can’t auto-attach files on most devices; use it to open a draft, then attach the downloaded CSV/PDF.</div>
       </footer>
+
+      {ffModal ? (
+        <div className="modalOverlay" onClick={() => setFfModal(null)} role="presentation">
+          <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <div className="modalHeader">
+              <div>
+                <div className="panelTitle">{ffModal.mode === 'add' ? 'Add firefighter' : 'Edit firefighter'}</div>
+                <div className="panelSub">Name + unit/company</div>
+              </div>
+              <button className="btn secondary" onClick={() => setFfModal(null)}>Close</button>
+            </div>
+
+            <div className="form" style={{ paddingTop: 0 }}>
+              <div className="formGrid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+                <label>
+                  First name
+                  <input value={ffForm.firstName} onChange={(e) => setFfForm((f) => ({ ...f, firstName: e.target.value }))} placeholder="" />
+                </label>
+                <label>
+                  Last name
+                  <input value={ffForm.lastName} onChange={(e) => setFfForm((f) => ({ ...f, lastName: e.target.value }))} placeholder="" />
+                </label>
+              </div>
+
+              <label>
+                Unit / Company
+                <input value={ffForm.unit} onChange={(e) => setFfForm((f) => ({ ...f, unit: e.target.value }))} placeholder="" />
+              </label>
+
+              <div className="formActions">
+                <button className="btn" onClick={saveFirefighter}>Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -16,7 +16,7 @@ export function exportCsv(firefighters: Firefighter[], vitals: VitalsEntry[]) {
       const f = ffById.get(v.firefighterId)
       return {
         time: fmtTime(v.timestamp),
-        firefighter: f?.name ?? 'Unknown',
+        firefighter: f ? `${f.lastName}, ${f.firstName}`.replace(/^,\s*/, '').trim() || 'Unknown' : 'Unknown',
         unit: f?.unit ?? '',
         hr: v.hr ?? '',
         rr: v.rr ?? '',
@@ -54,14 +54,17 @@ export function exportPdf(firefighters: Firefighter[], vitals: VitalsEntry[]) {
     grouped.set(v.firefighterId, arr)
   }
 
-  const ffList = firefighters.slice().sort((a, b) => a.name.localeCompare(b.name))
+  const ffList = firefighters
+    .slice()
+    .sort((a, b) => (`${a.lastName} ${a.firstName}`.trim()).localeCompare(`${b.lastName} ${b.firstName}`.trim()))
 
   for (const f of ffList) {
     const entries = (grouped.get(f.id) ?? []).slice().sort((a, b) => b.timestamp - a.timestamp)
 
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(12)
-    const header = `${f.name}${f.unit ? ` (${f.unit})` : ''}`
+    const label = `${f.lastName}, ${f.firstName}`.replace(/^,\s*/, '').trim()
+    const header = `${label}${f.unit ? ` (${f.unit})` : ''}`
     if (y > 740) {
       doc.addPage()
       y = margin

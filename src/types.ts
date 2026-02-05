@@ -1,6 +1,7 @@
 export type Firefighter = {
   id: string
-  name: string
+  firstName: string
+  lastName: string
   unit?: string
 }
 
