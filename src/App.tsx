@@ -361,7 +361,10 @@ export default function App() {
               <button className="btn danger" onClick={clearCurrentScene}>Clear scene</button>
             </>
           ) : (
-            <button className="btn" onClick={() => setNewSceneModal(true)}>+ New Scene</button>
+            <>
+              <button className="btn secondary" onClick={() => setShowSettings(true)}>Settings</button>
+              <button className="btn" onClick={() => setNewSceneModal(true)}>+ New Scene</button>
+            </>
           )}
         </div>
       </header>
