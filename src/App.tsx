@@ -671,13 +671,20 @@ export default function App() {
             </div>
 
             <div className="form" style={{ paddingTop: 0 }}>
-              <label>
-                Theme
-                <select value={state.settings.theme} onChange={(e) => updateSettings((s) => ({ ...s, theme: e.target.value as ThemeMode }))}>
-                  <option value="light">Light</option>
-                  <option value="dark">Dark</option>
-                </select>
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 12 }}>Theme</div>
+                  <div className="fine">{state.settings.theme === 'dark' ? 'Dark mode' : 'Light mode'}</div>
+                </div>
+                <label className="switch" aria-label="Toggle dark mode">
+                  <input
+                    type="checkbox"
+                    checked={state.settings.theme === 'dark'}
+                    onChange={(e) => updateSettings((s) => ({ ...s, theme: e.target.checked ? 'dark' : 'light' }))}
+                  />
+                  <span className="slider" />
+                </label>
+              </div>
 
               <div className="divider" />
 
