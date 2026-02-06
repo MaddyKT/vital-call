@@ -22,6 +22,7 @@ export function exportCsv(firefighters: Firefighter[], vitals: VitalsEntry[]) {
         hr: v.hr ?? '',
         rr: v.rr ?? '',
         spo2: v.spo2 ?? '',
+        spco: v.spco ?? '',
         bpSys: v.bpSys ?? '',
         bpDia: v.bpDia ?? '',
         tempF: v.tempF ?? '',
@@ -88,7 +89,7 @@ export function exportPdf(firefighters: Firefighter[], vitals: VitalsEntry[]) {
         y = margin
       }
 
-      const line1 = `${fmtTime(v.timestamp)}  HR:${v.hr ?? '-'} RR:${v.rr ?? '-'} SpO₂:${v.spo2 ?? '-'} BP:${v.bpSys ?? '-'} / ${v.bpDia ?? '-'} TempF:${v.tempF ?? '-'}`
+      const line1 = `${fmtTime(v.timestamp)}  HR:${v.hr ?? '-'} RR:${v.rr ?? '-'} SpO₂:${v.spo2 ?? '-'} SpCO:${v.spco ?? '-'} BP:${v.bpSys ?? '-'} / ${v.bpDia ?? '-'} TempF:${v.tempF ?? '-'}`
       doc.text(line1, margin, y)
       y += 12
       if (v.notes?.trim()) {

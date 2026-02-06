@@ -15,6 +15,7 @@ export type VitalsEntry = {
   hr?: number
   rr?: number
   spo2?: number
+  spco?: number
   bpSys?: number
   bpDia?: number
   tempF?: number
@@ -39,6 +40,7 @@ export type Thresholds = {
   rrHigh: number
   rrLow: number
   spo2Low: number
+  spcoHigh: number
   bpSysHigh: number
   bpSysLow: number
   bpDiaHigh: number

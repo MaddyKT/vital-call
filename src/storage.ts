@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS: Settings = {
     rrHigh: 30,
     rrLow: 8,
     spo2Low: 92,
+    spcoHigh: 10,
     bpSysHigh: 180,
     bpSysLow: 90,
     bpDiaHigh: 110,

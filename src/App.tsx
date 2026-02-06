@@ -20,9 +20,9 @@ function minutesAgo(ts: number) {
   return `${mins} min ago`
 }
 
-type AlertKey = 'hr' | 'rr' | 'spo2' | 'bp' | 'temp'
+type AlertKey = 'hr' | 'rr' | 'spo2' | 'spco' | 'bp' | 'temp'
 
-type TrendMetric = 'hr' | 'rr' | 'spo2' | 'temp' | 'bp'
+type TrendMetric = 'hr' | 'rr' | 'spo2' | 'spco' | 'temp' | 'bp'
 
 function pointsForMetric(entries: VitalsEntry[], metric: TrendMetric) {
   const asc = entries.slice().sort((a, b) => a.timestamp - b.timestamp)
@@ -37,6 +37,7 @@ function pointsForMetric(entries: VitalsEntry[], metric: TrendMetric) {
     hr: 'hr',
     rr: 'rr',
     spo2: 'spo2',
+    spco: 'spco',
     temp: 'tempF',
   }
 
@@ -89,6 +90,7 @@ function getAlerts(v: VitalsEntry, t: Thresholds): Set<AlertKey> {
   if (typeof v.hr === 'number' && (v.hr > t.hrHigh || v.hr < t.hrLow)) a.add('hr')
   if (typeof v.rr === 'number' && (v.rr > t.rrHigh || v.rr < t.rrLow)) a.add('rr')
   if (typeof v.spo2 === 'number' && v.spo2 < t.spo2Low) a.add('spo2')
+  if (typeof v.spco === 'number' && v.spco > t.spcoHigh) a.add('spco')
   if (typeof v.tempF === 'number' && v.tempF > t.tempHighF) a.add('temp')
   if (
     (typeof v.bpSys === 'number' && (v.bpSys > t.bpSysHigh || v.bpSys < t.bpSysLow)) ||
@@ -147,9 +149,9 @@ export default function App() {
       .sort((a, b) => b.timestamp - a.timestamp)
   }, [currentScene, selected])
 
-  const [form, setForm] = useState({ timeLocal: '', hr: '', rr: '', spo2: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
+  const [form, setForm] = useState({ timeLocal: '', hr: '', rr: '', spo2: '', spco: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
   const [showNewVitals, setShowNewVitals] = useState(false)
-  const [trend, setTrend] = useState<null | { metric: 'hr' | 'rr' | 'spo2' | 'temp' | 'bp' }>(null)
+  const [trend, setTrend] = useState<null | { metric: 'hr' | 'rr' | 'spo2' | 'spco' | 'temp' | 'bp' }>(null)
   const [showExport, setShowExport] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [newSceneModal, setNewSceneModal] = useState(false)
@@ -163,7 +165,7 @@ export default function App() {
 
   useEffect(() => {
     // reset form when switching firefighters
-    setForm({ timeLocal: nowLocalValue(), hr: '', rr: '', spo2: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
+    setForm({ timeLocal: nowLocalValue(), hr: '', rr: '', spo2: '', spco: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
     setShowNewVitals(false)
   }, [currentScene?.selectedFirefighterId])
 
@@ -254,6 +256,7 @@ export default function App() {
       hr: clampNum(form.hr),
       rr: clampNum(form.rr),
       spo2: clampNum(form.spo2),
+      spco: clampNum(form.spco),
       bpSys: clampNum(form.bpSys),
       bpDia: clampNum(form.bpDia),
       tempF: clampNum(form.tempF),
@@ -261,7 +264,7 @@ export default function App() {
     }
 
     updateCurrentScene((sc) => ({ ...sc, vitals: [...sc.vitals, entry] }))
-    setForm({ timeLocal: nowLocalValue(), hr: '', rr: '', spo2: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
+    setForm({ timeLocal: nowLocalValue(), hr: '', rr: '', spo2: '', spco: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
     setShowNewVitals(false)
   }
 
@@ -466,6 +469,9 @@ export default function App() {
                       <button className="vitalBtn" onClick={() => setTrend({ metric: 'spo2' })}>
                         SpO₂: <b>{v.spo2 ?? '—'}</b> {flag('spo2')}
                       </button>
+                      <button className="vitalBtn" onClick={() => setTrend({ metric: 'spco' })}>
+                        SpCO: <b>{v.spco ?? '—'}</b> {flag('spco')}
+                      </button>
                       <button className="vitalBtn" onClick={() => setTrend({ metric: 'bp' })}>
                         BP: <b>{v.bpSys ?? '—'}</b> / <b>{v.bpDia ?? '—'}</b> {flag('bp')}
                       </button>
@@ -517,6 +523,10 @@ export default function App() {
                     <label>
                       SpO₂
                       <input inputMode="numeric" value={form.spo2} onChange={(e) => setForm((f) => ({ ...f, spo2: e.target.value }))} placeholder="" />
+                    </label>
+                    <label>
+                      SpCO
+                      <input inputMode="decimal" value={form.spco} onChange={(e) => setForm((f) => ({ ...f, spco: e.target.value }))} placeholder="%" />
                     </label>
                     <label>
                       BP
@@ -583,6 +593,7 @@ export default function App() {
                       <div>HR: <b>{v.hr ?? '—'}</b> {flag('hr')}</div>
                       <div>RR: <b>{v.rr ?? '—'}</b> {flag('rr')}</div>
                       <div>SpO₂: <b>{v.spo2 ?? '—'}</b> {flag('spo2')}</div>
+                      <div>SpCO: <b>{v.spco ?? '—'}</b> {flag('spco')}</div>
                       <div>BP: <b>{v.bpSys ?? '—'}</b> / <b>{v.bpDia ?? '—'}</b> {flag('bp')}</div>
                       <div>TempF: <b>{v.tempF ?? '—'}</b> {flag('temp')}</div>
                     </div>
@@ -711,6 +722,10 @@ export default function App() {
                 <label>
                   SpO₂ low
                   <input inputMode="numeric" value={String(state.settings.thresholds.spo2Low)} onChange={(e) => updateSettings((s) => ({ ...s, thresholds: { ...s.thresholds, spo2Low: Number(e.target.value || 0) } }))} />
+                </label>
+                <label>
+                  SpCO high (critical)
+                  <input inputMode="decimal" value={String(state.settings.thresholds.spcoHigh)} onChange={(e) => updateSettings((s) => ({ ...s, thresholds: { ...s.thresholds, spcoHigh: Number(e.target.value || 0) } }))} />
                 </label>
                 <label>
                   Temp high (F)
