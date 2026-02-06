@@ -344,6 +344,7 @@ export default function App() {
         <div className="topActions">
           {currentScene ? (
             <>
+              <button className="btn secondary" onClick={() => setState((s) => ({ ...s, currentSceneId: null }))}>Scenes</button>
               <button className="btn" onClick={() => setShowExport(true)}>Export</button>
               <button className="btn danger" onClick={clearCurrentScene}>Clear scene</button>
             </>
