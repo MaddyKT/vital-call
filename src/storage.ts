@@ -15,7 +15,7 @@ const DEFAULT_SETTINGS: Settings = {
     bpSysLow: 90,
     bpDiaHigh: 110,
     bpDiaLow: 60,
-    tempHighF: 101.0,
+    tempHighF: 100.5,
   },
 }
 
