@@ -13,7 +13,12 @@ export function loadState(): AppState {
 
     // migration: older versions stored { name, unit }
     const migrated = (parsed.firefighters as any[]).map((f) => {
-      if ('firstName' in (f as any) && 'lastName' in (f as any)) return f
+      // v2+: { firstName, lastName, unit, status }
+      if ('firstName' in (f as any) && 'lastName' in (f as any)) {
+        const status = (f as any).status
+        const ok = status === 'duty' || status === 'rehab' || status === 'transport'
+        return ok ? f : { ...f, status: undefined }
+      }
       const name = String((f as any).name ?? '').trim()
       const unit = (f as any).unit
       const parts = name.split(/\s+/).filter(Boolean)

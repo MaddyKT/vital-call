@@ -1,8 +1,11 @@
+export type FirefighterStatus = 'duty' | 'rehab' | 'transport'
+
 export type Firefighter = {
   id: string
   firstName: string
   lastName: string
   unit?: string
+  status?: FirefighterStatus
 }
 
 export type VitalsEntry = {

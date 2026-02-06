@@ -18,6 +18,7 @@ export function exportCsv(firefighters: Firefighter[], vitals: VitalsEntry[]) {
         time: fmtTime(v.timestamp),
         firefighter: f ? `${f.lastName}, ${f.firstName}`.replace(/^,\s*/, '').trim() || 'Unknown' : 'Unknown',
         unit: f?.unit ?? '',
+        status: f?.status ?? '',
         hr: v.hr ?? '',
         rr: v.rr ?? '',
         spo2: v.spo2 ?? '',
@@ -64,7 +65,7 @@ export function exportPdf(firefighters: Firefighter[], vitals: VitalsEntry[]) {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(12)
     const label = `${f.lastName}, ${f.firstName}`.replace(/^,\s*/, '').trim()
-    const header = `${label}${f.unit ? ` (${f.unit})` : ''}`
+    const header = `${label}${f.unit ? ` (${f.unit})` : ''}${f.status ? ` — ${f.status}` : ''}`
     if (y > 740) {
       doc.addPage()
       y = margin

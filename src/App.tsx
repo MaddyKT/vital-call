@@ -148,15 +148,15 @@ export default function App() {
   }, [showNewVitals])
 
   const [ffModal, setFfModal] = useState<null | { mode: 'add' | 'edit'; id?: string }>(null)
-  const [ffForm, setFfForm] = useState({ firstName: '', lastName: '', unit: '' })
+  const [ffForm, setFfForm] = useState({ firstName: '', lastName: '', unit: '', status: '' as '' | 'duty' | 'rehab' | 'transport' })
 
   const openAddFirefighter = () => {
-    setFfForm({ firstName: '', lastName: '', unit: '' })
+    setFfForm({ firstName: '', lastName: '', unit: '', status: '' })
     setFfModal({ mode: 'add' })
   }
 
   const openEditFirefighter = (ff: Firefighter) => {
-    setFfForm({ firstName: ff.firstName ?? '', lastName: ff.lastName ?? '', unit: ff.unit ?? '' })
+    setFfForm({ firstName: ff.firstName ?? '', lastName: ff.lastName ?? '', unit: ff.unit ?? '', status: (ff.status ?? '') as any })
     setFfModal({ mode: 'edit', id: ff.id })
   }
 
@@ -164,6 +164,7 @@ export default function App() {
     const firstName = ffForm.firstName.trim()
     const lastName = ffForm.lastName.trim()
     const unit = ffForm.unit.trim()
+    const status = ffForm.status || undefined
 
     if (!firstName && !lastName) {
       alert('Enter at least a first name or last name.')
@@ -173,7 +174,7 @@ export default function App() {
     if (!ffModal) return
 
     if (ffModal.mode === 'add') {
-      const ff: Firefighter = { id: nanoid(), firstName, lastName, unit: unit || undefined }
+      const ff: Firefighter = { id: nanoid(), firstName, lastName, unit: unit || undefined, status }
       setState((s) => ({
         ...s,
         firefighters: [...s.firefighters, ff],
@@ -187,7 +188,7 @@ export default function App() {
     if (!id) return
     setState((s) => ({
       ...s,
-      firefighters: s.firefighters.map((f) => (f.id === id ? { ...f, firstName, lastName, unit: unit || undefined } : f)),
+      firefighters: s.firefighters.map((f) => (f.id === id ? { ...f, firstName, lastName, unit: unit || undefined, status } : f)),
     }))
     setFfModal(null)
   }
@@ -306,7 +307,7 @@ export default function App() {
                 return (
                   <div
                     key={f.id}
-                    className={isSel ? 'row selected' : 'row'}
+                    className={`row ${isSel ? 'selected' : ''} ${f.status ? `status_${f.status}` : ''}`.trim()}
                     onClick={() => setState((s) => ({ ...s, selectedFirefighterId: f.id }))}
                     role="button"
                     tabIndex={0}
@@ -342,6 +343,27 @@ export default function App() {
                   {selectedVitals[0] ? `Last recorded: ${new Date(selectedVitals[0].timestamp).toLocaleString()}` : 'No vitals recorded yet.'}
                 </div>
                 <button className="btn" onClick={() => setShowNewVitals(true)}>+ New vitals</button>
+              </div>
+
+              <div className="statusRow">
+                <button
+                  className={selected.status === 'duty' ? 'statusBtn statusDuty active' : 'statusBtn statusDuty'}
+                  onClick={() => setState((s) => ({ ...s, firefighters: s.firefighters.map((f) => (f.id === selected.id ? { ...f, status: 'duty' } : f)) }))}
+                >
+                  Return to Duty
+                </button>
+                <button
+                  className={selected.status === 'rehab' ? 'statusBtn statusRehab active' : 'statusBtn statusRehab'}
+                  onClick={() => setState((s) => ({ ...s, firefighters: s.firefighters.map((f) => (f.id === selected.id ? { ...f, status: 'rehab' } : f)) }))}
+                >
+                  Hold for Rehab
+                </button>
+                <button
+                  className={selected.status === 'transport' ? 'statusBtn statusTransport active' : 'statusBtn statusTransport'}
+                  onClick={() => setState((s) => ({ ...s, firefighters: s.firefighters.map((f) => (f.id === selected.id ? { ...f, status: 'transport' } : f)) }))}
+                >
+                  Transport
+                </button>
               </div>
 
               {selectedVitals[0] ? (() => {
@@ -524,6 +546,19 @@ export default function App() {
               <label>
                 Unit / Company
                 <input value={ffForm.unit} onChange={(e) => setFfForm((f) => ({ ...f, unit: e.target.value }))} placeholder="" />
+              </label>
+
+              <label>
+                Status (optional)
+                <select
+                  value={ffForm.status}
+                  onChange={(e) => setFfForm((f) => ({ ...f, status: e.target.value as any }))}
+                >
+                  <option value="">—</option>
+                  <option value="duty">Return to Duty</option>
+                  <option value="rehab">Hold for Rehab</option>
+                  <option value="transport">Transport</option>
+                </select>
               </label>
 
               <div className="formActions">

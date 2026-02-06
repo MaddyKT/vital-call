@@ -108,6 +108,36 @@ body { margin: 0; }
 .row:hover { border-color: #dbe3ff; }
 .row.selected { border-color: #1d4ed8; box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.12) inset; }
 
+.row.status_duty { border-left: 8px solid #16a34a; }
+.row.status_rehab { border-left: 8px solid #f59e0b; }
+.row.status_transport { border-left: 8px solid #dc2626; }
+
+.statusRow {
+  padding: 0 14px 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .statusRow { grid-template-columns: 1fr; }
+}
+
+.statusBtn {
+  border: 1px solid #eef0f7;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 12px 10px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.statusBtn.active { box-shadow: 0 0 0 2px rgba(0,0,0,0.08) inset; }
+
+.statusDuty.active { border-color: #16a34a; box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.18) inset; }
+.statusRehab.active { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.18) inset; }
+.statusTransport.active { border-color: #dc2626; box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.18) inset; }
+
 .rowName { font-weight: 800; }
 .rowMeta { font-size: 12px; opacity: 0.7; }
 
@@ -125,11 +155,12 @@ body { margin: 0; }
 
 label { display: grid; gap: 6px; font-size: 12px; font-weight: 700; color: #0f172a; }
 
-input, textarea {
+input, textarea, select {
   font: inherit;
   padding: 10px;
   border-radius: 10px;
   border: 1px solid #e6e8f2;
+  background: white;
 }
 
 .bpRow {
