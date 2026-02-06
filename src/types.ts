@@ -31,7 +31,28 @@ export type Scene = {
   vitals: VitalsEntry[]
 }
 
+export type ThemeMode = 'light' | 'dark'
+
+export type Thresholds = {
+  hrHigh: number
+  hrLow: number
+  rrHigh: number
+  rrLow: number
+  spo2Low: number
+  bpSysHigh: number
+  bpSysLow: number
+  bpDiaHigh: number
+  bpDiaLow: number
+  tempHighF: number
+}
+
+export type Settings = {
+  theme: ThemeMode
+  thresholds: Thresholds
+}
+
 export type AppState = {
   currentSceneId: string | null
   scenes: Scene[]
+  settings: Settings
 }

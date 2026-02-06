@@ -3,13 +3,31 @@
   line-height: 1.3;
   font-weight: 400;
   color-scheme: light;
-  color: #0b1220;
-  background: #f6f7fb;
+  --bg: #f6f7fb;
+  --panel: #ffffff;
+  --text: #0b1220;
+  --muted: #475569;
+  --border: #e6e8f2;
+  --border2: #eef0f7;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0b1220;
+  --panel: #0f172a;
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --border: #1f2937;
+  --border2: #243244;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  background: var(--bg);
 }
 
 * { box-sizing: border-box; }
-
-body { margin: 0; }
 
 .app { min-height: 100vh; display: flex; flex-direction: column; }
 
@@ -19,8 +37,8 @@ body { margin: 0; }
   gap: 12px;
   align-items: center;
   padding: 12px 14px;
-  background: white;
-  border-bottom: 1px solid #e6e8f2;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 20;
@@ -49,8 +67,8 @@ body { margin: 0; }
 }
 
 .panel {
-  background: white;
-  border: 1px solid #e6e8f2;
+  background: var(--panel);
+  border: 1px solid var(--border);
   border-radius: 14px;
   overflow: hidden;
   box-shadow: 0 1px 0 rgba(0,0,0,0.02);
@@ -58,7 +76,7 @@ body { margin: 0; }
 
 .panelHeader {
   padding: 12px 14px;
-  border-bottom: 1px solid #eef0f7;
+  border-bottom: 1px solid var(--border2);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -95,12 +113,12 @@ body { margin: 0; }
 }
 .iconBtn:hover { opacity: 1; }
 
-.empty { padding: 14px; color: #475569; }
+.empty { padding: 14px; color: var(--muted); }
 
 .list { padding: 8px; display: grid; gap: 8px; }
 
 .row {
-  border: 1px solid #eef0f7;
+  border: 1px solid var(--border2);
   border-radius: 12px;
   padding: 10px;
   display: flex;
@@ -129,8 +147,8 @@ body { margin: 0; }
 }
 
 .statusBtn {
-  border: 1px solid #eef0f7;
-  background: #ffffff;
+  border: 1px solid var(--border2);
+  background: var(--panel);
   border-radius: 12px;
   padding: 12px 10px;
   font-weight: 900;
@@ -158,14 +176,15 @@ body { margin: 0; }
   .formGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-label { display: grid; gap: 6px; font-size: 12px; font-weight: 700; color: #0f172a; }
+label { display: grid; gap: 6px; font-size: 12px; font-weight: 700; color: var(--text); }
 
 input, textarea, select {
   font: inherit;
   padding: 10px;
   border-radius: 10px;
-  border: 1px solid #e6e8f2;
-  background: white;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
 }
 
 .bpRow {
@@ -188,12 +207,12 @@ textarea { resize: vertical; }
 
 .formActions { display: flex; justify-content: flex-end; }
 
-.divider { height: 1px; background: #eef0f7; }
+.divider { height: 1px; background: var(--border2); }
 
 .history { padding: 14px; display: grid; gap: 10px; }
 
 .card {
-  border: 1px solid #eef0f7;
+  border: 1px solid var(--border2);
   border-radius: 12px;
   padding: 10px;
   display: grid;
@@ -202,8 +221,8 @@ textarea { resize: vertical; }
 
 .vitalBtn {
   text-align: left;
-  border: 1px solid #eef0f7;
-  background: #ffffff;
+  border: 1px solid var(--border2);
+  background: var(--panel);
   border-radius: 12px;
   padding: 10px;
   cursor: pointer;
@@ -215,7 +234,7 @@ textarea { resize: vertical; }
 }
 
 .chart {
-  border: 1px solid #eef0f7;
+  border: 1px solid var(--border2);
   border-radius: 12px;
 }
 
@@ -228,7 +247,7 @@ textarea { resize: vertical; }
   font-size: 13px;
 }
 
-.notes { font-size: 13px; color: #334155; }
+.notes { font-size: 13px; color: var(--text); opacity: 0.9; }
 
 .alert {
   color: #b91c1c;
@@ -252,16 +271,16 @@ textarea { resize: vertical; }
 
 .modal {
   width: min(720px, 100%);
-  background: white;
+  background: var(--panel);
   border-radius: 14px;
-  border: 1px solid #e6e8f2;
+  border: 1px solid var(--border);
   box-shadow: 0 10px 30px rgba(0,0,0,0.25);
   overflow: hidden;
 }
 
 .modalHeader {
   padding: 12px 14px;
-  border-bottom: 1px solid #eef0f7;
+  border-bottom: 1px solid var(--border2);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -270,7 +289,7 @@ textarea { resize: vertical; }
 
 .timeHeader {
   padding: 10px 14px;
-  border-bottom: 1px solid #eef0f7;
+  border-bottom: 1px solid var(--border2);
   display: flex;
   justify-content: center;
 }

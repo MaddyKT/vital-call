@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { nanoid } from 'nanoid'
 import './App.css'
-import type { AppState, Firefighter, Scene, VitalsEntry } from './types'
+import type { AppState, Firefighter, Scene, Settings, Thresholds, ThemeMode, VitalsEntry } from './types'
 import { loadState, saveState } from './storage'
 import { downloadText, exportCsv, exportPdf, downloadBlob, shareFilesIfPossible } from './exporters'
 
@@ -82,17 +82,17 @@ function SparkLine({ data, width = 640, height = 220 }: { data: { x: number; y: 
   )
 }
 
-function getAlerts(v: VitalsEntry): Set<AlertKey> {
+function getAlerts(v: VitalsEntry, t: Thresholds): Set<AlertKey> {
   const a = new Set<AlertKey>()
 
-  // Simple v1 thresholds (tweakable). Use only if value present.
-  if (typeof v.hr === 'number' && (v.hr > 100 || v.hr < 50)) a.add('hr')
-  if (typeof v.rr === 'number' && (v.rr >= 30 || v.rr <= 8)) a.add('rr')
-  if (typeof v.spo2 === 'number' && v.spo2 < 92) a.add('spo2')
-  if (typeof v.tempF === 'number' && v.tempF >= 101.0) a.add('temp')
+  // Use only if value present.
+  if (typeof v.hr === 'number' && (v.hr > t.hrHigh || v.hr < t.hrLow)) a.add('hr')
+  if (typeof v.rr === 'number' && (v.rr > t.rrHigh || v.rr < t.rrLow)) a.add('rr')
+  if (typeof v.spo2 === 'number' && v.spo2 < t.spo2Low) a.add('spo2')
+  if (typeof v.tempF === 'number' && v.tempF > t.tempHighF) a.add('temp')
   if (
-    (typeof v.bpSys === 'number' && (v.bpSys >= 180 || v.bpSys <= 90)) ||
-    (typeof v.bpDia === 'number' && (v.bpDia >= 110 || v.bpDia <= 60))
+    (typeof v.bpSys === 'number' && (v.bpSys > t.bpSysHigh || v.bpSys < t.bpSysLow)) ||
+    (typeof v.bpDia === 'number' && (v.bpDia > t.bpDiaHigh || v.bpDia < t.bpDiaLow))
   ) {
     a.add('bp')
   }
@@ -112,6 +112,10 @@ export default function App() {
       ...s,
       scenes: s.scenes.map((sc) => (sc.id === sceneId ? { ...fn(sc), updatedAt: Date.now() } : sc)),
     }))
+  }
+
+  const updateSettings = (fn: (settings: Settings) => Settings) => {
+    setState((s) => ({ ...s, settings: fn(s.settings) }))
   }
 
   const updateCurrentScene = (fn: (scene: Scene) => Scene) => {
@@ -147,6 +151,7 @@ export default function App() {
   const [showNewVitals, setShowNewVitals] = useState(false)
   const [trend, setTrend] = useState<null | { metric: 'hr' | 'rr' | 'spo2' | 'temp' | 'bp' }>(null)
   const [showExport, setShowExport] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   const [newSceneModal, setNewSceneModal] = useState(false)
   const [newSceneName, setNewSceneName] = useState('')
 
@@ -332,6 +337,12 @@ export default function App() {
     setNewSceneName('')
   }
 
+  // Apply theme
+  useEffect(() => {
+    const mode: ThemeMode = state.settings?.theme ?? 'light'
+    document.documentElement.dataset.theme = mode
+  }, [state.settings?.theme])
+
   return (
     <div className="app">
       <header className="topbar">
@@ -345,6 +356,7 @@ export default function App() {
           {currentScene ? (
             <>
               <button className="btn secondary" onClick={() => setState((s) => ({ ...s, currentSceneId: null }))}>Scenes</button>
+              <button className="btn secondary" onClick={() => setShowSettings(true)}>Settings</button>
               <button className="btn" onClick={() => setShowExport(true)}>Export</button>
               <button className="btn danger" onClick={clearCurrentScene}>Clear scene</button>
             </>
@@ -437,7 +449,7 @@ export default function App() {
 
               {selectedVitals[0] ? (() => {
                 const v = selectedVitals[0]
-                const alerts = getAlerts(v)
+                const alerts = getAlerts(v, state.settings.thresholds)
                 const flag = (k: AlertKey) => (alerts.has(k) ? <span className="alert">❗️</span> : null)
                 return (
                   <div className="card" style={{ margin: 0 }}>
@@ -558,7 +570,7 @@ export default function App() {
           ) : (
             <div className="history">
               {selectedVitals.map((v) => {
-                const alerts = getAlerts(v)
+                const alerts = getAlerts(v, state.settings.thresholds)
                 const flag = (k: AlertKey) => (alerts.has(k) ? <span className="alert">❗️</span> : null)
 
                 return (
@@ -639,6 +651,82 @@ export default function App() {
             <div style={{ padding: 14, display: 'grid', gap: 10 }}>
               <button className="btn" onClick={async () => { await exportAll(); setShowExport(false) }}>Share / Export (CSV + PDF)</button>
               <button className="btn secondary" onClick={() => { mailtoExport(); setShowExport(false) }}>Mailto…</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showSettings ? (
+        <div className="modalOverlay" onClick={() => setShowSettings(false)} role="presentation">
+          <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <div className="modalHeader">
+              <div>
+                <div className="panelTitle">Settings</div>
+                <div className="panelSub">Theme + alert thresholds</div>
+              </div>
+              <button className="btn secondary" onClick={() => setShowSettings(false)}>Close</button>
+            </div>
+
+            <div className="form" style={{ paddingTop: 0 }}>
+              <label>
+                Theme
+                <select value={state.settings.theme} onChange={(e) => updateSettings((s) => ({ ...s, theme: e.target.value as ThemeMode }))}>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </label>
+
+              <div className="divider" />
+
+              <div className="panelTitle">Thresholds</div>
+              <div className="formGrid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+                <label>
+                  HR high
+                  <input inputMode="numeric" value={String(state.settings.thresholds.hrHigh)} onChange={(e) => updateSettings((s) => ({ ...s, thresholds: { ...s.thresholds, hrHigh: Number(e.target.value || 0) } }))} />
+                </label>
+                <label>
+                  HR low
+                  <input inputMode="numeric" value={String(state.settings.thresholds.hrLow)} onChange={(e) => updateSettings((s) => ({ ...s, thresholds: { ...s.thresholds, hrLow: Number(e.target.value || 0) } }))} />
+                </label>
+
+                <label>
+                  RR high
+                  <input inputMode="numeric" value={String(state.settings.thresholds.rrHigh)} onChange={(e) => updateSettings((s) => ({ ...s, thresholds: { ...s.thresholds, rrHigh: Number(e.target.value || 0) } }))} />
+                </label>
+                <label>
+                  RR low
+                  <input inputMode="numeric" value={String(state.settings.thresholds.rrLow)} onChange={(e) => updateSettings((s) => ({ ...s, thresholds: { ...s.thresholds, rrLow: Number(e.target.value || 0) } }))} />
+                </label>
+
+                <label>
+                  SpO₂ low
+                  <input inputMode="numeric" value={String(state.settings.thresholds.spo2Low)} onChange={(e) => updateSettings((s) => ({ ...s, thresholds: { ...s.thresholds, spo2Low: Number(e.target.value || 0) } }))} />
+                </label>
+                <label>
+                  Temp high (F)
+                  <input inputMode="decimal" value={String(state.settings.thresholds.tempHighF)} onChange={(e) => updateSettings((s) => ({ ...s, thresholds: { ...s.thresholds, tempHighF: Number(e.target.value || 0) } }))} />
+                </label>
+
+                <label>
+                  BP sys high
+                  <input inputMode="numeric" value={String(state.settings.thresholds.bpSysHigh)} onChange={(e) => updateSettings((s) => ({ ...s, thresholds: { ...s.thresholds, bpSysHigh: Number(e.target.value || 0) } }))} />
+                </label>
+                <label>
+                  BP sys low
+                  <input inputMode="numeric" value={String(state.settings.thresholds.bpSysLow)} onChange={(e) => updateSettings((s) => ({ ...s, thresholds: { ...s.thresholds, bpSysLow: Number(e.target.value || 0) } }))} />
+                </label>
+
+                <label>
+                  BP dia high
+                  <input inputMode="numeric" value={String(state.settings.thresholds.bpDiaHigh)} onChange={(e) => updateSettings((s) => ({ ...s, thresholds: { ...s.thresholds, bpDiaHigh: Number(e.target.value || 0) } }))} />
+                </label>
+                <label>
+                  BP dia low
+                  <input inputMode="numeric" value={String(state.settings.thresholds.bpDiaLow)} onChange={(e) => updateSettings((s) => ({ ...s, thresholds: { ...s.thresholds, bpDiaLow: Number(e.target.value || 0) } }))} />
+                </label>
+              </div>
+
+              <div className="fine">Alerts flag values outside the high/low range (SpO₂ flags below its low).</div>
             </div>
           </div>
         </div>

@@ -1,7 +1,23 @@
-import type { AppState, Scene } from './types'
+import type { AppState, Scene, Settings } from './types'
 
 const KEY_V2 = 'vitalCall:v2'
 const KEY_V1 = 'fireVitals:v1'
+
+const DEFAULT_SETTINGS: Settings = {
+  theme: 'light',
+  thresholds: {
+    hrHigh: 100,
+    hrLow: 50,
+    rrHigh: 30,
+    rrLow: 8,
+    spo2Low: 92,
+    bpSysHigh: 180,
+    bpSysLow: 90,
+    bpDiaHigh: 110,
+    bpDiaLow: 60,
+    tempHighF: 101.0,
+  },
+}
 
 function migrateFirefighters(firefighters: any[]) {
   return (firefighters ?? []).map((f) => {
@@ -24,7 +40,12 @@ export function loadState(): AppState {
     const raw = localStorage.getItem(KEY_V2)
     if (raw) {
       const parsed = JSON.parse(raw) as AppState
-      if (parsed && Array.isArray(parsed.scenes)) return parsed
+      if (parsed && Array.isArray(parsed.scenes)) {
+        return {
+          ...parsed,
+          settings: parsed.settings ?? DEFAULT_SETTINGS,
+        }
+      }
     }
 
     // Migration from v1 single-scene state
@@ -42,15 +63,15 @@ export function loadState(): AppState {
           selectedFirefighterId: v1.selectedFirefighterId ?? null,
           vitals: v1.vitals,
         }
-        const next: AppState = { currentSceneId: scene.id, scenes: [scene] }
+        const next: AppState = { currentSceneId: scene.id, scenes: [scene], settings: DEFAULT_SETTINGS }
         saveState(next)
         return next
       }
     }
 
-    return { currentSceneId: null, scenes: [] }
+    return { currentSceneId: null, scenes: [], settings: DEFAULT_SETTINGS }
   } catch {
-    return { currentSceneId: null, scenes: [] }
+    return { currentSceneId: null, scenes: [], settings: DEFAULT_SETTINGS }
   }
 }
 
