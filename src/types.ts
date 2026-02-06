@@ -21,8 +21,17 @@ export type VitalsEntry = {
   notes?: string
 }
 
-export type AppState = {
+export type Scene = {
+  id: string
+  name: string
+  createdAt: number
+  updatedAt: number
   firefighters: Firefighter[]
   selectedFirefighterId: string | null
   vitals: VitalsEntry[]
+}
+
+export type AppState = {
+  currentSceneId: string | null
+  scenes: Scene[]
 }

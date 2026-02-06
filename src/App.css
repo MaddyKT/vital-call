@@ -39,6 +39,11 @@ body { margin: 0; }
   padding: 12px;
 }
 
+.home {
+  flex: 1;
+  padding: 12px;
+}
+
 @media (max-width: 900px) {
   .grid { grid-template-columns: 1fr; }
 }

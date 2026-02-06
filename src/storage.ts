@@ -1,42 +1,64 @@
-import type { AppState } from './types'
+import type { AppState, Scene } from './types'
 
-const KEY = 'fireVitals:v1'
+const KEY_V2 = 'vitalCall:v2'
+const KEY_V1 = 'fireVitals:v1'
+
+function migrateFirefighters(firefighters: any[]) {
+  return (firefighters ?? []).map((f) => {
+    if ('firstName' in (f as any) && 'lastName' in (f as any)) {
+      const status = (f as any).status
+      const ok = status === 'duty' || status === 'rehab' || status === 'transport'
+      return ok ? f : { ...f, status: undefined }
+    }
+    const name = String((f as any).name ?? '').trim()
+    const unit = (f as any).unit
+    const parts = name.split(/\s+/).filter(Boolean)
+    const firstName = parts[0] ?? ''
+    const lastName = parts.slice(1).join(' ')
+    return { id: (f as any).id, firstName, lastName, unit }
+  })
+}
 
 export function loadState(): AppState {
   try {
-    const raw = localStorage.getItem(KEY)
-    if (!raw) return { firefighters: [], selectedFirefighterId: null, vitals: [] }
-    const parsed = JSON.parse(raw) as AppState
-    if (!parsed || !Array.isArray(parsed.firefighters) || !Array.isArray(parsed.vitals)) {
-      return { firefighters: [], selectedFirefighterId: null, vitals: [] }
+    const raw = localStorage.getItem(KEY_V2)
+    if (raw) {
+      const parsed = JSON.parse(raw) as AppState
+      if (parsed && Array.isArray(parsed.scenes)) return parsed
     }
 
-    // migration: older versions stored { name, unit }
-    const migrated = (parsed.firefighters as any[]).map((f) => {
-      // v2+: { firstName, lastName, unit, status }
-      if ('firstName' in (f as any) && 'lastName' in (f as any)) {
-        const status = (f as any).status
-        const ok = status === 'duty' || status === 'rehab' || status === 'transport'
-        return ok ? f : { ...f, status: undefined }
+    // Migration from v1 single-scene state
+    const rawV1 = localStorage.getItem(KEY_V1)
+    if (rawV1) {
+      const v1 = JSON.parse(rawV1) as any
+      if (v1 && Array.isArray(v1.firefighters) && Array.isArray(v1.vitals)) {
+        const now = Date.now()
+        const scene: Scene = {
+          id: 'scene_migrated',
+          name: 'Current Scene',
+          createdAt: now,
+          updatedAt: now,
+          firefighters: migrateFirefighters(v1.firefighters),
+          selectedFirefighterId: v1.selectedFirefighterId ?? null,
+          vitals: v1.vitals,
+        }
+        const next: AppState = { currentSceneId: scene.id, scenes: [scene] }
+        saveState(next)
+        return next
       }
-      const name = String((f as any).name ?? '').trim()
-      const unit = (f as any).unit
-      const parts = name.split(/\s+/).filter(Boolean)
-      const firstName = parts[0] ?? ''
-      const lastName = parts.slice(1).join(' ')
-      return { id: (f as any).id, firstName, lastName, unit }
-    })
+    }
 
-    return { ...parsed, firefighters: migrated as any }
+    return { currentSceneId: null, scenes: [] }
   } catch {
-    return { firefighters: [], selectedFirefighterId: null, vitals: [] }
+    return { currentSceneId: null, scenes: [] }
   }
 }
 
 export function saveState(state: AppState) {
-  localStorage.setItem(KEY, JSON.stringify(state))
+  localStorage.setItem(KEY_V2, JSON.stringify(state))
 }
 
-export function clearState() {
-  localStorage.removeItem(KEY)
+export function clearAll() {
+  localStorage.removeItem(KEY_V2)
+  localStorage.removeItem(KEY_V1)
 }

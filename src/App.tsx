@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { nanoid } from 'nanoid'
 import './App.css'
-import type { AppState, Firefighter, VitalsEntry } from './types'
-import { clearState, loadState, saveState } from './storage'
+import type { AppState, Firefighter, Scene, VitalsEntry } from './types'
+import { loadState, saveState } from './storage'
 import { downloadText, exportCsv, exportPdf, downloadBlob, shareFilesIfPossible } from './exporters'
 
 function clampNum(v: string): number | undefined {
@@ -107,27 +107,48 @@ export default function App() {
     saveState(state)
   }, [state])
 
+  const updateScene = (sceneId: string, fn: (scene: Scene) => Scene) => {
+    setState((s) => ({
+      ...s,
+      scenes: s.scenes.map((sc) => (sc.id === sceneId ? { ...fn(sc), updatedAt: Date.now() } : sc)),
+    }))
+  }
+
+  const updateCurrentScene = (fn: (scene: Scene) => Scene) => {
+    if (!state.currentSceneId) return
+    updateScene(state.currentSceneId, fn)
+  }
+
+  const currentScene: Scene | null = useMemo(() => {
+    if (!state.currentSceneId) return null
+    return state.scenes.find((s) => s.id === state.currentSceneId) ?? null
+  }, [state.currentSceneId, state.scenes])
+
   const sortedFirefighters = useMemo(() => {
-    return state.firefighters
+    return (currentScene?.firefighters ?? [])
       .slice()
       .sort((a, b) => (`${a.lastName} ${a.firstName}`.trim()).localeCompare(`${b.lastName} ${b.firstName}`.trim()))
-  }, [state.firefighters])
+  }, [currentScene?.firefighters])
 
   const selected = useMemo(() => {
-    return state.firefighters.find((f) => f.id === state.selectedFirefighterId) ?? null
-  }, [state.firefighters, state.selectedFirefighterId])
+    if (!currentScene) return null
+    return currentScene.firefighters.find((f) => f.id === currentScene.selectedFirefighterId) ?? null
+  }, [currentScene])
 
   const selectedVitals = useMemo(() => {
-    if (!selected) return []
-    return state.vitals
+    if (!currentScene || !selected) return []
+    return currentScene.vitals
       .filter((v) => v.firefighterId === selected.id)
       .slice()
       .sort((a, b) => b.timestamp - a.timestamp)
-  }, [state.vitals, selected])
+  }, [currentScene, selected])
 
   const [form, setForm] = useState({ timeLocal: '', hr: '', rr: '', spo2: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
   const [showNewVitals, setShowNewVitals] = useState(false)
   const [trend, setTrend] = useState<null | { metric: 'hr' | 'rr' | 'spo2' | 'temp' | 'bp' }>(null)
+  const [showExport, setShowExport] = useState(false)
+  const [newSceneModal, setNewSceneModal] = useState(false)
+  const [newSceneName, setNewSceneName] = useState('')
 
   function nowLocalValue() {
     const d = new Date()
@@ -139,7 +160,7 @@ export default function App() {
     // reset form when switching firefighters
     setForm({ timeLocal: nowLocalValue(), hr: '', rr: '', spo2: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
     setShowNewVitals(false)
-  }, [state.selectedFirefighterId])
+  }, [currentScene?.selectedFirefighterId])
 
   useEffect(() => {
     if (showNewVitals) {
@@ -173,11 +194,16 @@ export default function App() {
 
     if (!ffModal) return
 
+    if (!currentScene) {
+      alert('Start a new scene first.')
+      return
+    }
+
     if (ffModal.mode === 'add') {
       const ff: Firefighter = { id: nanoid(), firstName, lastName, unit: unit || undefined, status }
-      setState((s) => ({
-        ...s,
-        firefighters: [...s.firefighters, ff],
+      updateCurrentScene((sc) => ({
+        ...sc,
+        firefighters: [...sc.firefighters, ff],
         selectedFirefighterId: ff.id,
       }))
       setFfModal(null)
@@ -186,23 +212,25 @@ export default function App() {
 
     const id = ffModal.id
     if (!id) return
-    setState((s) => ({
-      ...s,
-      firefighters: s.firefighters.map((f) => (f.id === id ? { ...f, firstName, lastName, unit: unit || undefined, status } : f)),
+    updateCurrentScene((sc) => ({
+      ...sc,
+      firefighters: sc.firefighters.map((f) => (f.id === id ? { ...f, firstName, lastName, unit: unit || undefined, status } : f)),
     }))
     setFfModal(null)
   }
 
   const removeFirefighter = (id: string) => {
-    const ff = state.firefighters.find((f) => f.id === id)
+    if (!currentScene) return
+    const ff = currentScene.firefighters.find((f) => f.id === id)
     if (!ff) return
     const label = `${ff.lastName}, ${ff.firstName}`.replace(/^,\s*/, '').trim()
     if (!confirm(`Remove ${label} and all their vitals?`)) return
-    setState((s) => {
-      const remaining = s.firefighters.filter((f) => f.id !== id)
-      const vitals = s.vitals.filter((v) => v.firefighterId !== id)
-      const selectedFirefighterId = s.selectedFirefighterId === id ? (remaining[0]?.id ?? null) : s.selectedFirefighterId
-      return { ...s, firefighters: remaining, vitals, selectedFirefighterId }
+
+    updateCurrentScene((sc) => {
+      const remaining = sc.firefighters.filter((f) => f.id !== id)
+      const vitals = sc.vitals.filter((v) => v.firefighterId !== id)
+      const selectedFirefighterId = sc.selectedFirefighterId === id ? (remaining[0]?.id ?? null) : sc.selectedFirefighterId
+      return { ...sc, firefighters: remaining, vitals, selectedFirefighterId }
     })
   }
 
@@ -227,17 +255,19 @@ export default function App() {
       notes: form.notes.trim() || undefined,
     }
 
-    setState((s) => ({ ...s, vitals: [...s.vitals, entry] }))
+    updateCurrentScene((sc) => ({ ...sc, vitals: [...sc.vitals, entry] }))
     setForm({ timeLocal: nowLocalValue(), hr: '', rr: '', spo2: '', bpSys: '', bpDia: '', tempF: '', notes: '' })
     setShowNewVitals(false)
   }
 
   const exportAll = async () => {
-    const baseName = `firefighter-vitals-${new Date().toISOString().slice(0, 10)}`
+    if (!currentScene) return
+    const safeName = currentScene.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+    const baseName = `${safeName || 'vital-call'}-${new Date().toISOString().slice(0, 10)}`
 
-    const csv = exportCsv(state.firefighters, state.vitals)
+    const csv = exportCsv(currentScene.firefighters, currentScene.vitals)
     const csvBlob = new Blob([csv], { type: 'text/csv' })
-    const pdfBlob = exportPdf(state.firefighters, state.vitals)
+    const pdfBlob = exportPdf(currentScene.firefighters, currentScene.vitals)
 
     const files = [
       new File([csvBlob], `${baseName}.csv`, { type: 'text/csv' }),
@@ -258,34 +288,72 @@ export default function App() {
   }
 
   const mailtoExport = () => {
+    if (!currentScene) return
     // mailto can't attach files reliably; we open a draft with instructions.
-    const subject = encodeURIComponent('Firefighter Vitals Export')
+    const subject = encodeURIComponent(`Vital Call Export — ${currentScene.name}`)
     const body = encodeURIComponent(
       `Attached are the vitals exports (CSV + PDF).\n\nTip: if your browser downloaded the files, attach them from Downloads.\n\nExport time: ${new Date().toLocaleString()}`
     )
     window.location.href = `mailto:?subject=${subject}&body=${body}`
   }
 
-  const reset = () => {
+  const clearCurrentScene = () => {
+    if (!currentScene) return
     if (!confirm('Clear current scene roster + vitals on this device?')) return
-    clearState()
-    setState({ firefighters: [], selectedFirefighterId: null, vitals: [] })
+    updateCurrentScene((sc) => ({ ...sc, firefighters: [], selectedFirefighterId: null, vitals: [] }))
+  }
+
+  const deleteScene = (sceneId: string) => {
+    const sc = state.scenes.find((x) => x.id === sceneId)
+    if (!sc) return
+    if (!confirm(`Delete scene “${sc.name}”?`)) return
+    setState((s) => {
+      const scenes = s.scenes.filter((x) => x.id !== sceneId)
+      const currentSceneId = s.currentSceneId === sceneId ? (scenes[0]?.id ?? null) : s.currentSceneId
+      return { ...s, scenes, currentSceneId }
+    })
+  }
+
+  const startNewScene = () => {
+    const name = newSceneName.trim() || `Scene ${new Date().toLocaleString()}`
+    const id = nanoid()
+    const now = Date.now()
+    const scene: Scene = {
+      id,
+      name,
+      createdAt: now,
+      updatedAt: now,
+      firefighters: [],
+      selectedFirefighterId: null,
+      vitals: [],
+    }
+    setState((s) => ({ ...s, scenes: [scene, ...s.scenes], currentSceneId: id }))
+    setNewSceneModal(false)
+    setNewSceneName('')
   }
 
   return (
     <div className="app">
       <header className="topbar">
         <div>
-          <div className="title">Firefighter Vitals (Current Scene)</div>
-          <div className="subtitle">Offline on this device • Export CSV/PDF</div>
+          <div className="title">Vital Call</div>
+          <div className="subtitle">
+            {currentScene ? `Scene: ${currentScene.name}` : 'Start a scene to begin tracking vitals'}
+          </div>
         </div>
         <div className="topActions">
-          <button className="btn" onClick={exportAll}>Share / Export</button>
-          <button className="btn secondary" onClick={mailtoExport}>Mailto</button>
-          <button className="btn danger" onClick={reset}>Clear</button>
+          {currentScene ? (
+            <>
+              <button className="btn" onClick={() => setShowExport(true)}>Export</button>
+              <button className="btn danger" onClick={clearCurrentScene}>Clear scene</button>
+            </>
+          ) : (
+            <button className="btn" onClick={() => setNewSceneModal(true)}>+ New Scene</button>
+          )}
         </div>
       </header>
 
+      {currentScene ? (
       <div className="grid">
         <aside className="panel">
           <div className="panelHeader">
@@ -298,17 +366,17 @@ export default function App() {
           ) : (
             <div className="list">
               {sortedFirefighters.map((f) => {
-                const last = state.vitals
+                const last = (currentScene?.vitals ?? [])
                   .filter((v) => v.firefighterId === f.id)
                   .slice()
                   .sort((a, b) => b.timestamp - a.timestamp)[0]
 
-                const isSel = f.id === state.selectedFirefighterId
+                const isSel = f.id === currentScene?.selectedFirefighterId
                 return (
                   <div
                     key={f.id}
                     className={`row ${isSel ? 'selected' : ''} ${f.status ? `status_${f.status}` : ''}`.trim()}
-                    onClick={() => setState((s) => ({ ...s, selectedFirefighterId: f.id }))}
+                    onClick={() => updateCurrentScene((sc) => ({ ...sc, selectedFirefighterId: f.id }))}
                     role="button"
                     tabIndex={0}
                   >
@@ -348,19 +416,19 @@ export default function App() {
               <div className="statusRow">
                 <button
                   className={selected.status === 'duty' ? 'statusBtn statusDuty active' : 'statusBtn statusDuty'}
-                  onClick={() => setState((s) => ({ ...s, firefighters: s.firefighters.map((f) => (f.id === selected.id ? { ...f, status: 'duty' } : f)) }))}
+                  onClick={() => updateCurrentScene((sc) => ({ ...sc, firefighters: sc.firefighters.map((f) => (f.id === selected.id ? { ...f, status: 'duty' } : f)) }))}
                 >
                   Return to Duty
                 </button>
                 <button
                   className={selected.status === 'rehab' ? 'statusBtn statusRehab active' : 'statusBtn statusRehab'}
-                  onClick={() => setState((s) => ({ ...s, firefighters: s.firefighters.map((f) => (f.id === selected.id ? { ...f, status: 'rehab' } : f)) }))}
+                  onClick={() => updateCurrentScene((sc) => ({ ...sc, firefighters: sc.firefighters.map((f) => (f.id === selected.id ? { ...f, status: 'rehab' } : f)) }))}
                 >
                   Hold for Rehab
                 </button>
                 <button
                   className={selected.status === 'transport' ? 'statusBtn statusTransport active' : 'statusBtn statusTransport'}
-                  onClick={() => setState((s) => ({ ...s, firefighters: s.firefighters.map((f) => (f.id === selected.id ? { ...f, status: 'transport' } : f)) }))}
+                  onClick={() => updateCurrentScene((sc) => ({ ...sc, firefighters: sc.firefighters.map((f) => (f.id === selected.id ? { ...f, status: 'transport' } : f)) }))}
                 >
                   Transport
                 </button>
@@ -515,10 +583,89 @@ export default function App() {
           )}
         </main>
       </div>
+      ) : (
+        <div className="home">
+          <div className="panel" style={{ padding: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div>
+                <div className="panelTitle">Scenes</div>
+                <div className="panelSub">Start a new scene, or open a saved one.</div>
+              </div>
+              <button className="btn" onClick={() => setNewSceneModal(true)}>+ New Scene</button>
+            </div>
+
+            {state.scenes.length === 0 ? (
+              <div className="empty">No saved scenes yet.</div>
+            ) : (
+              <div className="list" style={{ padding: 0, marginTop: 12 }}>
+                {state.scenes
+                  .slice()
+                  .sort((a, b) => b.updatedAt - a.updatedAt)
+                  .map((sc) => (
+                    <div key={sc.id} className="row" style={{ cursor: 'default' }}>
+                      <div className="rowMain">
+                        <div className="rowName">{sc.name}</div>
+                        <div className="rowMeta">Updated: {new Date(sc.updatedAt).toLocaleString()}</div>
+                        <div className="rowMeta">{sc.firefighters.length} firefighters • {sc.vitals.length} vitals</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <button className="btn small" onClick={() => setState((s) => ({ ...s, currentSceneId: sc.id }))}>Open</button>
+                        <button className="btn small danger" onClick={() => deleteScene(sc.id)}>Delete</button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <footer className="footer">
         <div className="fine">Note: “Mailto” can’t auto-attach files on most devices; use it to open a draft, then attach the downloaded CSV/PDF.</div>
       </footer>
+
+      {showExport && currentScene ? (
+        <div className="modalOverlay" onClick={() => setShowExport(false)} role="presentation">
+          <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <div className="modalHeader">
+              <div>
+                <div className="panelTitle">Export</div>
+                <div className="panelSub">{currentScene.name}</div>
+              </div>
+              <button className="btn secondary" onClick={() => setShowExport(false)}>Close</button>
+            </div>
+
+            <div style={{ padding: 14, display: 'grid', gap: 10 }}>
+              <button className="btn" onClick={async () => { await exportAll(); setShowExport(false) }}>Share / Export (CSV + PDF)</button>
+              <button className="btn secondary" onClick={() => { mailtoExport(); setShowExport(false) }}>Mailto…</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {newSceneModal ? (
+        <div className="modalOverlay" onClick={() => setNewSceneModal(false)} role="presentation">
+          <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <div className="modalHeader">
+              <div>
+                <div className="panelTitle">New Scene</div>
+                <div className="panelSub">Create a scene to start tracking vitals</div>
+              </div>
+              <button className="btn secondary" onClick={() => setNewSceneModal(false)}>Close</button>
+            </div>
+
+            <div className="form" style={{ paddingTop: 0 }}>
+              <label>
+                Scene name
+                <input value={newSceneName} onChange={(e) => setNewSceneName(e.target.value)} placeholder="e.g., House fire – Main St" />
+              </label>
+              <div className="formActions">
+                <button className="btn" onClick={startNewScene}>Start</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {ffModal ? (
         <div className="modalOverlay" onClick={() => setFfModal(null)} role="presentation">
