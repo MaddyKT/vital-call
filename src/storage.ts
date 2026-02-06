@@ -4,7 +4,7 @@ const KEY_V2 = 'vitalCall:v2'
 const KEY_V1 = 'fireVitals:v1'
 
 const DEFAULT_SETTINGS: Settings = {
-  theme: 'light',
+  theme: 'dark',
   thresholds: {
     hrHigh: 100,
     hrLow: 50,
